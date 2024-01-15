@@ -69,8 +69,8 @@ class Method(nn.Module):
         corr_q = refined_corr.view(num_qry, way, self.feature_size*self.feature_size, self.feature_size*self.feature_size)
 
         # applying softmax for each side
-        corr_s = F.softmax(corr_s / 5.0, dim=2)
-        corr_q = F.softmax(corr_q / 5.0, dim=3)
+        corr_s = F.softmax(corr_s, dim=2)
+        corr_q = F.softmax(corr_q, dim=3)
 
         # suming up matching scores
         attn_s = corr_s.sum(dim=[3])
