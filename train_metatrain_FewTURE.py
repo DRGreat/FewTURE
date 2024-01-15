@@ -430,9 +430,6 @@ class NewPatchFSL(nn.Module):
 
     def _cca(self, spt, qry):
 
-        print(spt.shape)
-        print(qry.shape)
-
         spt = spt.unsqueeze(1)
         qry = qry.unsqueeze(1)
 
@@ -526,15 +523,14 @@ class NewPatchFSL(nn.Module):
         support_emb_query = self.classification_head(support_emb_query)
         query_emb = self.classification_head(query_emb)
 
-        if not self.peiv_init_state:
-            self._reset_peiv()
-        # Run optimisation on peiv
-
-        if not self.disable_peiv_optimisation:
-            self._optimise_peiv(support_emb_key, support_emb_query, support_labels)
+        # if not self.peiv_init_state:
+        #     self._reset_peiv()
+        # # Run optimisation on peiv
+        #
+        # if not self.disable_peiv_optimisation:
+        #     self._optimise_peiv(support_emb_key, support_emb_query, support_labels)
         # Retrieve the predictions of query set samples
-
-        print("nihao",support_emb_key.shape)
+        print(support_emb_key.shape)
         print(query_emb.shape)
         # import sys
         # sys.exit(0)
