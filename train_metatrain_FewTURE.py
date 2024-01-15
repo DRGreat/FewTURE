@@ -547,6 +547,7 @@ class NewPatchFSL(nn.Module):
         support_emb_key = self.reduce_dim(support_emb_key.transpose(1, 2)).transpose(1, 2)
         support_emb_query = self.reduce_dim(support_emb_query.transpose(1, 2)).transpose(1, 2)
         query_emb = self.reduce_dim(query_emb.transpose(1, 2)).transpose(1, 2)
+        print(query_emb.shape)
         if not self.peiv_init_state:
             self._reset_peiv()
         # Run optimisation on peiv
