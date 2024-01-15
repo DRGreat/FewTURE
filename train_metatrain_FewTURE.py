@@ -430,6 +430,9 @@ class NewPatchFSL(nn.Module):
 
     def _cca(self, spt, qry):
 
+        print(spt.shape)
+        print(qry.shape)
+
         spt = spt.unsqueeze(1)
         qry = qry.unsqueeze(1)
 
