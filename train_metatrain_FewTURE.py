@@ -398,7 +398,7 @@ class NewPatchFSL(nn.Module):
         self.reduce_dim = nn.Linear(384, self.feature_size ** 2)
         self.expand_dim = nn.Linear(self.feature_size ** 2, 384)
         self.proj = nn.ModuleList([
-            nn.Linear(384, self.feature_proj_dim)
+            nn.Linear(self.encoder_dim, self.feature_proj_dim)
         ])
         self.cca_1x1 = nn.ModuleList([
             nn.Sequential(
