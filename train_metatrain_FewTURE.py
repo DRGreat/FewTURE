@@ -433,6 +433,9 @@ class NewPatchFSL(nn.Module):
         spt = spt.squeeze(1)
         qry = qry.squeeze(1)
 
+        print(spt.shape)
+        print(qry.shape)
+
         # shifting channel activations by the channel mean
         # shape of spt : [25, 9]
         # shape of qry : [75, 9]
@@ -530,8 +533,6 @@ class NewPatchFSL(nn.Module):
         # if not self.disable_peiv_optimisation:
         #     self._optimise_peiv(support_emb_key, support_emb_query, support_labels)
         # Retrieve the predictions of query set samples
-        print(support_emb_key.shape)
-        print(query_emb.shape)
         # import sys
         # sys.exit(0)
         pred_query = self._predict(support_emb_key, query_emb, phase='infer')
