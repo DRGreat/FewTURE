@@ -520,6 +520,8 @@ class NewPatchFSL(nn.Module):
         return
 
     def forward(self, support_emb_key, support_emb_query, query_emb, support_labels):
+        print("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+
         # Check whether patch importance vector has been reset to its initialisation state
         support_emb_key = self.classification_head(support_emb_key)
         support_emb_query = self.classification_head(support_emb_query)
@@ -531,7 +533,6 @@ class NewPatchFSL(nn.Module):
         if not self.disable_peiv_optimisation:
             self._optimise_peiv(support_emb_key, support_emb_query, support_labels)
         # Retrieve the predictions of query set samples
-        print("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
         print(support_emb_key.shape)
         print(query_emb.shape)
         import sys
