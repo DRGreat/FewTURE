@@ -395,7 +395,8 @@ class NewPatchFSL(nn.Module):
         self.feature_proj_dim = 3
         self.decoder_embed_dim = self.feature_size ** 2 + self.feature_proj_dim
 
-        self.reduce_dim = nn.Linear(196, self.feature_size ** 2)
+        self.reduce_dim = nn.Linear(384, self.feature_size ** 2)
+        self.expand_dim = nn.Linear(self.feature_size ** 2, 384)
         self.proj = nn.ModuleList([
             nn.Linear(384, self.feature_proj_dim)
         ])
@@ -430,8 +431,10 @@ class NewPatchFSL(nn.Module):
         return x - x.mean(1).unsqueeze(1)
 
     def _cca(self, spt, qry):
-        spt = spt.transpose(1, 2).reshape(spt.shape[0], 384, int(math.sqrt(spt.shape[1])), int(math.sqrt(spt.shape[1])))
-        qry = qry.transpose(1, 2).reshape(qry.shape[0], 384, int(math.sqrt(qry.shape[1])), int(math.sqrt(qry.shape[1])))
+        spt = self.reduce_dim(spt)
+        qry = self.reduce_dim(qry)
+        spt = spt.transpose(1, 2).reshape(spt.shape[0], 196, int(math.sqrt(spt.shape[1])), int(math.sqrt(spt.shape[1])))
+        qry = qry.transpose(1, 2).reshape(qry.shape[0], 196, int(math.sqrt(qry.shape[1])), int(math.sqrt(qry.shape[1])))
         # shifting channel activations by the channel mean
         spt = self.normalize_feature(spt)
         qry = self.normalize_feature(qry)
@@ -489,8 +492,11 @@ class NewPatchFSL(nn.Module):
         # qry_attended = qry.unsqueeze(1).repeat(1, way, 1, 1, 1)
 
         # ----------------------------------replace--------------------------------------#
-        spt = spt_attended.reshape(spt.shape[0], 384, -1).transpose(1, 2)
-        qry = qry_attended.reshape(qry.shape[0], 384, -1).transpose(1, 2)
+        spt = spt_attended.reshape(spt.shape[0], 196, -1)
+        qry = qry_attended.reshape(qry.shape[0], 196, -1)
+
+        spt = self.expand_dim(spt)
+        qry = self.expand_dim(qry)
 
         return spt, qry
 
@@ -499,7 +505,7 @@ class NewPatchFSL(nn.Module):
         patch embedding importance vector 'peiv'. The phase parameter denotes whether the prediction is intended for
         adapting peiv ('adapt') using the support set, or inference ('infer') on the query set."""
         sup_emb_seq_len = support_emb.shape[1]
-        # support_emb, query_emb = self._cca(support_emb, query_emb)
+        support_emb, query_emb = self._cca(support_emb, query_emb)
         print(support_emb.shape)
         print(query_emb.shape)
         # Compute patch embedding similarity
@@ -546,9 +552,6 @@ class NewPatchFSL(nn.Module):
 
     def forward(self, support_emb_key, support_emb_query, query_emb, support_labels):
         # Check whether patch importance vector has been reset to its initialisation state
-        # support_emb_key = self.reduce_dim(support_emb_key.transpose(1, 2)).transpose(1, 2)
-        # support_emb_query = self.reduce_dim(support_emb_query.transpose(1, 2)).transpose(1, 2)
-        # query_emb = self.reduce_dim(query_emb.transpose(1, 2)).transpose(1, 2)
         if not self.peiv_init_state:
             self._reset_peiv()
         # Run optimisation on peiv
