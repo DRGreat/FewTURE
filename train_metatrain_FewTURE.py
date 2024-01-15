@@ -430,8 +430,8 @@ class NewPatchFSL(nn.Module):
 
     def _cca(self, spt, qry):
 
-        spt = spt.unsqueeze(1)
-        qry = qry.unsqueeze(1)
+        spt = spt.squeeze(1)
+        qry = qry.squeeze(1)
 
         # shifting channel activations by the channel mean
         # shape of spt : [25, 9]
