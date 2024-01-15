@@ -245,7 +245,7 @@ def run_validation(model, fsl_mod_inductive_mcnet, data_loader, args, epoch):
         for i, batch in enumerate(val_tqdm_gen, 1):
             data, _ = [_.cuda() for _ in batch]
             # Retrieve the patch embeddings for all samples, both support and query from Transformer backbone
-            emb_support, emb_query = get_patch_embeddings(model, data, args)
+            emb_support, emb_query = get_mcnet_embeddings(model, data, args)
 
             with torch.enable_grad():
                 # optimise patch importance weights based on support set information and predict query logits
