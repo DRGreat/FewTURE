@@ -26,6 +26,7 @@ from tqdm import tqdm
 import models
 import utils
 from datasets.samplers import CategoriesSampler
+from models.method import Method
 
 ####################################################################
 USE_WANDB = False
@@ -463,6 +464,7 @@ def metatrain_fewture(args, wandb_run):
     # ============= Building the patchFSL online adaptation and classification module =================================
     seqlen_key, seqlen_qu = get_sup_emb_seqlengths(args)
     fsl_mod_inductive = PatchFSL(args, seqlen_key, seqlen_qu)
+    fsl_mod_inductive_mcnet = Method().cuda()
 
     # ============= Building the optimiser for meta fine-tuning and assigning the parameters ==========================
     param_to_meta_learn = [{'params': model.parameters()}]
@@ -521,9 +523,13 @@ def metatrain_fewture(args, wandb_run):
             emb_support, emb_query = get_mcnet_embeddings(model, data, args)
             # Run patch-based module, online adaptation using support set info, followed by prediction of query classes
             # query_pred_logits = fsl_mod_inductive(emb_support, emb_support, emb_query, label_support)
-            print("emb_support.shape:", emb_support.shape)
-            print("emb_query.shape:", emb_query.shape)
-            # print("query_pred_logits.shape:", query_pred_logits.shape)
+            fsl_mod_inductive_mcnet.mode="encoder"
+            emb_support = fsl_mod_inductive_mcnet(emb_support)
+            emb_query = fsl_mod_inductive_mcnet(emb_query)
+            fsl_mod_inductive_mcnet.mode="cca"
+            query_pred_logits = fsl_mod_inductive_mcnet(emb_support, emb_query)
+            print("query_pred_logits:\n", query_pred_logits)
+            print("query_pred_logits.shape:", query_pred_logits.shape)
             import sys
             sys.exit(0)
             loss = F.cross_entropy(query_pred_logits, label_query)
