@@ -345,11 +345,11 @@ class PatchFSL(nn.Module):
 
     def forward(self, support_emb_key, support_emb_query, query_emb, support_labels):
         # Check whether patch importance vector has been reset to its initialisation state
-        if not self.peiv_init_state:
-            self._reset_peiv()
-        # Run optimisation on peiv
-        if not self.disable_peiv_optimisation:
-            self._optimise_peiv(support_emb_key, support_emb_query, support_labels)
+        # if not self.peiv_init_state:
+        #     self._reset_peiv()
+        # # Run optimisation on peiv
+        # if not self.disable_peiv_optimisation:
+        #     self._optimise_peiv(support_emb_key, support_emb_query, support_labels)
         # Retrieve the predictions of query set samples
         pred_query = self._predict(support_emb_key, query_emb, phase='infer')
         return pred_query
