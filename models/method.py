@@ -69,8 +69,8 @@ class Method(nn.Module):
         corr_q = refined_corr.view(num_qry, way, self.feature_size*self.feature_size, self.feature_size*self.feature_size)
 
         # applying softmax for each side
-        corr_s = F.softmax(corr_s, dim=2)
-        corr_q = F.softmax(corr_q, dim=3)
+        corr_s = F.softmax(corr_s / 5.0, dim=2)
+        corr_q = F.softmax(corr_q / 5.0, dim=3)
 
         # suming up matching scores
         attn_s = corr_s.sum(dim=[3])
@@ -97,7 +97,7 @@ class Method(nn.Module):
 
         # similarity_matrix = F.cosine_similarity(spt_attended, qry_attended, dim=-1)
         similarity_matrix = -F.pairwise_distance(spt_attended, qry_attended, p=2)
-        return similarity_matrix
+        return similarity_matrix / 0.2
 
     def encode(self, x):
         x = self.classification_head(x)
