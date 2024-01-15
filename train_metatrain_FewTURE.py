@@ -175,6 +175,19 @@ def get_patch_embeddings(model, data, args):
     emb_support, emb_query = patch_embeddings[:, :args.k_shot], patch_embeddings[:, args.k_shot:]
     return emb_support.reshape(-1, seq_len, emb_dim), emb_query.reshape(-1, seq_len, emb_dim)
 
+def get_mcnet_embeddings(model, data, args):
+    """Function to retrieve all patch embeddings of provided data samples, split into support and query set samples;
+    Data arranged in 'aaabbbcccdddeee' fashion, so must be split appropriately for support and query set"""
+    # Forward pass through backbone model;
+    # Important: This contains the [cls] token at position 0 ([:,0]) and the patch-embeddings after that([:,1:end]).
+    # We thus remove the [cls] token
+    patch_embeddings = model(data)[:, 0]
+    # temp size values for reshaping
+    bs, seq_len, emb_dim = patch_embeddings.shape[0], patch_embeddings.shape[1], patch_embeddings.shape[2]
+    # Split the data accordingly into support set and query set!  E.g. 5|75 (5way,1-shot); 25|75 (5way, 5-shot)
+    patch_embeddings = patch_embeddings.view(args.n_way, -1, seq_len, emb_dim)
+    emb_support, emb_query = patch_embeddings[:, :args.k_shot], patch_embeddings[:, args.k_shot:]
+    return emb_support.reshape(-1, seq_len, emb_dim), emb_query.reshape(-1, seq_len, emb_dim)
 
 def compute_emb_cosine_similarity(support_emb: torch.Tensor, query_emb: torch.Tensor):
     """Compute the similarity matrix C between support and query embeddings using the cosine similarity.
@@ -505,13 +518,12 @@ def metatrain_fewture(args, wandb_run):
         for i, batch in enumerate(train_tqdm_gen, 1):
             data, _ = [_.cuda() for _ in batch]
             # Retrieve the patch embeddings for all samples, both support and query from Transformer backbone
-            emb_support, emb_query = get_patch_embeddings(model, data, args)
+            emb_support, emb_query = get_mcnet_embeddings(model, data, args)
             # Run patch-based module, online adaptation using support set info, followed by prediction of query classes
-            query_pred_logits = fsl_mod_inductive(emb_support, emb_support, emb_query, label_support)
-            print("query_pred_logits:\n", query_pred_logits)
+            # query_pred_logits = fsl_mod_inductive(emb_support, emb_support, emb_query, label_support)
             print("emb_support.shape:", emb_support.shape)
             print("emb_query.shape:", emb_query.shape)
-            print("query_pred_logits.shape:", query_pred_logits.shape)
+            # print("query_pred_logits.shape:", query_pred_logits.shape)
             import sys
             sys.exit(0)
             loss = F.cross_entropy(query_pred_logits, label_query)
