@@ -527,6 +527,9 @@ def metatrain_fewture(args, wandb_run):
             #---------------------------------
             # Retrieve the patch embeddings for all samples, both support and query from Transformer backbone
             emb_support, emb_query = get_mcnet_embeddings(model, data, args)
+            fsl_mod_inductive_mcnet.mode="encoder"
+            emb_support = fsl_mod_inductive_mcnet(emb_support)
+            emb_query = fsl_mod_inductive_mcnet(emb_query)
             # Run patch-based module, online adaptation using support set info, followed by prediction of query classes
             query_pred_logits = fsl_mod_inductive(emb_support, emb_support, emb_query, label_support)
             #------------------------------
