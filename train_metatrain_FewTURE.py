@@ -420,6 +420,8 @@ class NewPatchFSL(nn.Module):
         # Compute patch embedding similarity
         C = compute_emb_cosine_similarity(support_emb, query_emb)
         print(C.shape)
+        import sys
+        sys.exit(0)
         # Mask out block diagonal during adaptation to prevent image patches from classifying themselves and neighbours
         if phase == 'adapt':
             C = C + self.block_mask
