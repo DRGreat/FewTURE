@@ -499,7 +499,7 @@ class NewPatchFSL(nn.Module):
         patch embedding importance vector 'peiv'. The phase parameter denotes whether the prediction is intended for
         adapting peiv ('adapt') using the support set, or inference ('infer') on the query set."""
         sup_emb_seq_len = support_emb.shape[1]
-        support_emb, query_emb = self._cca(support_emb, query_emb)
+        # support_emb, query_emb = self._cca(support_emb, query_emb)
         print(support_emb.shape)
         print(query_emb.shape)
         # Compute patch embedding similarity
