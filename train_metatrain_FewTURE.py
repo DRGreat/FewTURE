@@ -437,9 +437,6 @@ class NewPatchFSL(nn.Module):
         # Gather log probs of all patches for each image
         pred = torch.logsumexp(pred, dim=1)
         # Return the predicted logits
-        print(pred.transpose(0,1).shape)
-        import sys
-        sys.exit(0)
         return pred.transpose(0, 1)
 
     def _optimise_peiv(self, support_emb_key, support_emb_query, supp_labels):
@@ -471,6 +468,7 @@ class NewPatchFSL(nn.Module):
             self._optimise_peiv(support_emb_key, support_emb_query, support_labels)
         # Retrieve the predictions of query set samples
         pred_query = self._predict(support_emb_key, query_emb, phase='infer')
+        print(pred_query.shape)
         return pred_query
 
 
