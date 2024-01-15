@@ -418,8 +418,6 @@ class NewPatchFSL(nn.Module):
     def _cca(self, spt, qry):
         spt = spt.transpose(1,2).reshape(spt.shape[0], 384, int(math.sqrt(spt.shape[1])), int(math.sqrt(spt.shape[1])))
         qry = qry.transpose(1,2).reshape(qry.shape[0], 384, int(math.sqrt(qry.shape[1])), int(math.sqrt(qry.shape[1])))
-        print(spt.shape)
-        print(qry.shape)
         # shifting channel activations by the channel mean
         spt = self.normalize_feature(spt)
         qry = self.normalize_feature(qry)
@@ -438,7 +436,6 @@ class NewPatchFSL(nn.Module):
         for i, (src, tgt) in enumerate(zip(spt_feats, qry_feats)):
             # corr = self.get_correlation_map(src, tgt, i, num_qry, way) #[75x25,9,9]
             corr = self.corr(self.l2norm(src), self.l2norm(tgt))
-
             corrs.append(corr)
             spt_feats_proj.append(self.proj[i](src.flatten(2).transpose(-1, -2)))  # [75x25,9,3]
             qry_feats_proj.append(self.proj[i](tgt.flatten(2).transpose(-1, -2)))  # [75x25,9,3]
@@ -447,6 +444,9 @@ class NewPatchFSL(nn.Module):
         qry_feats = torch.stack(qry_feats_proj, dim=1)
         corr = torch.stack(corrs, dim=1)  # [75x25,4,9,9]
         # corr = self.mutual_nn_filter(corr)
+        print(spt_feats.shape)
+        print(qry_feats.shape)
+        print(corr.shape)
         refined_corr = self.decoder(corr, spt_feats, qry_feats).view(num_qry, way, *[self.feature_size] * 4)
         corr_s = refined_corr.view(num_qry, way, self.feature_size * self.feature_size, self.feature_size,
                                    self.feature_size)
