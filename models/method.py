@@ -97,7 +97,7 @@ class Method(nn.Module):
 
         # similarity_matrix = F.cosine_similarity(spt_attended, qry_attended, dim=-1)
         similarity_matrix = -F.pairwise_distance(spt_attended, qry_attended, p=2)
-        return similarity_matrix / 0.2
+        return similarity_matrix
 
     def encode(self, x):
         x = self.classification_head(x)
