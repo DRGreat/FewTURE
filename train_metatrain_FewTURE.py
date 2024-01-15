@@ -500,6 +500,8 @@ class NewPatchFSL(nn.Module):
         adapting peiv ('adapt') using the support set, or inference ('infer') on the query set."""
         sup_emb_seq_len = support_emb.shape[1]
         support_emb, query_emb = self._cca(support_emb, query_emb)
+        print(support_emb.shape)
+        print(query_emb.shape)
         # Compute patch embedding similarity
         C = compute_emb_cosine_similarity(support_emb, query_emb)
 
@@ -547,7 +549,6 @@ class NewPatchFSL(nn.Module):
         support_emb_key = self.reduce_dim(support_emb_key.transpose(1, 2)).transpose(1, 2)
         support_emb_query = self.reduce_dim(support_emb_query.transpose(1, 2)).transpose(1, 2)
         query_emb = self.reduce_dim(query_emb.transpose(1, 2)).transpose(1, 2)
-        print(query_emb.shape)
         if not self.peiv_init_state:
             self._reset_peiv()
         # Run optimisation on peiv
