@@ -414,7 +414,7 @@ class NewPatchFSL(nn.Module):
         self.decoder_embed_dim = self.feature_size ** 2 + self.feature_proj_dim
         self.proj = nn.Linear(vit_dim, self.feature_proj_dim)
         self.decoder = TransformerAggregator(
-            img_size=self.feature_size, embed_dim=self.decoder_embed_dim, depth=4, num_heads=6,
+            img_size=self.feature_size, embed_dim=self.decoder_embed_dim, depth=1, num_heads=2,
             mlp_ratio=4, qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6),
             num_hyperpixel=len(hyperpixel_ids))
 
@@ -432,9 +432,6 @@ class NewPatchFSL(nn.Module):
 
         spt = spt.squeeze(1)
         qry = qry.squeeze(1)
-
-        print(spt.shape)
-        print(qry.shape)
 
         # shifting channel activations by the channel mean
         # shape of spt : [25, 9]
