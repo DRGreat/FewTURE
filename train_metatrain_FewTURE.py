@@ -508,7 +508,7 @@ def metatrain_fewture(args, wandb_run):
             emb_support, emb_query = get_patch_embeddings(model, data, args)
             # Run patch-based module, online adaptation using support set info, followed by prediction of query classes
             query_pred_logits = fsl_mod_inductive(emb_support, emb_support, emb_query, label_support)
-            print("query_pred_logits:\n" + query_pred_logits)
+            print("query_pred_logits:\n", query_pred_logits)
             print("emb_support.shape:", emb_support.shape)
             print("emb_query.shape:", emb_query.shape)
             print("query_pred_logits.shape:", query_pred_logits.shape)
