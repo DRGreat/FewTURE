@@ -631,7 +631,7 @@ def metatrain_fewture(args, wandb_run):
 
     # ============= Building the patchFSL online adaptation and classification module =================================
     seqlen_key, seqlen_qu = get_sup_emb_seqlengths(args)
-    fsl_mod_inductive = NewPatchFSL(args, 1, 1)
+    fsl_mod_inductive = NewPatchFSL(args, 1, 1).cuda()
     fsl_mod_inductive_mcnet = Method(args).cuda()
 
     # ============= Building the optimiser for meta fine-tuning and assigning the parameters ==========================
