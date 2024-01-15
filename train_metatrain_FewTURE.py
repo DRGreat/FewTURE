@@ -485,8 +485,10 @@ class NewPatchFSL(nn.Module):
         attn_q = corr_q.sum(dim=[2, 3])
 
         # applying attention
-        spt_attended = attn_s.unsqueeze(2) * spt.unsqueeze(0).mean(dim=0)
-        qry_attended = attn_q.unsqueeze(2) * qry.unsqueeze(1).mean(dim=1)
+        spt_attended = (attn_s.unsqueeze(2) * spt.unsqueeze(0)).mean(dim=0)
+        qry_attended = (attn_q.unsqueeze(2) * qry.unsqueeze(1)).mean(dim=1)
+
+
 
         # ----------------------------------cat--------------------------------------#
 
@@ -499,6 +501,8 @@ class NewPatchFSL(nn.Module):
 
         print(spt.shape)
         print(qry.shape)
+
+
 
         spt = self.expand_dim(spt)
         qry = self.expand_dim(qry)
