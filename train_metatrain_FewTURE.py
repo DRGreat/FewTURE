@@ -375,7 +375,7 @@ class PatchFSL(nn.Module):
 
 class NewPatchFSL(nn.Module):
     def __init__(self, args, sup_emb_key_seq_len, sup_emb_query_seq_len):
-        super(PatchFSL, self).__init__()
+        super(NewPatchFSL, self).__init__()
         self.total_len_support_key = args.n_way * args.k_shot * sup_emb_key_seq_len
         # Mask to prevent image self-classification during adaptation
         if args.k_shot > 1:  # E.g. for 5-shot scenarios, use 'full' block-diagonal logit matrix to mask entire image
