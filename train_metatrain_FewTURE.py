@@ -188,7 +188,7 @@ def get_mcnet_embeddings(model, data, args):
     # Split the data accordingly into support set and query set!  E.g. 5|75 (5way,1-shot); 25|75 (5way, 5-shot)
     patch_embeddings = patch_embeddings.view(args.n_way, -1, seq_len, emb_dim)
     emb_support, emb_query = patch_embeddings[:, :args.k_shot], patch_embeddings[:, args.k_shot:]
-    return emb_support.reshape(-1, emb_dim), emb_query.reshape(-1, emb_dim)
+    return emb_support.reshape(-1, seq_len, emb_dim), emb_query.reshape(-1, seq_len, emb_dim)
 
 def compute_emb_cosine_similarity(support_emb: torch.Tensor, query_emb: torch.Tensor):
     """Compute the similarity matrix C between support and query embeddings using the cosine similarity.
@@ -526,14 +526,14 @@ def metatrain_fewture(args, wandb_run):
             data, _ = [_.cuda() for _ in batch]
             #---------------------------------
             # Retrieve the patch embeddings for all samples, both support and query from Transformer backbone
-            emb_support, emb_query = get_patch_embeddings(model, data, args)
+            emb_support, emb_query = get_mcnet_embeddings(model, data, args)
             # Run patch-based module, online adaptation using support set info, followed by prediction of query classes
             query_pred_logits = fsl_mod_inductive(emb_support, emb_support, emb_query, label_support)
             #------------------------------
             # emb_support, emb_query = get_mcnet_embeddings(model, data, args)
             # fsl_mod_inductive_mcnet.mode="encoder"
-            # emb_support = fsl_mod_inductive_mcnet(emb_support)
-            # emb_query = fsl_mod_inductive_mcnet(emb_query)
+            # emb_support = fsl_mod_inductive_mcnet(emb_support.squeeze(1))
+            # emb_query = fsl_mod_inductive_mcnet(emb_query.squeeze(1))
             # fsl_mod_inductive_mcnet.mode="cca"
             # query_pred_logits = fsl_mod_inductive_mcnet([emb_support, emb_query])
             #-----------------------------------
