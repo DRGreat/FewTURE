@@ -228,7 +228,7 @@ def get_sup_emb_seqlengths(args):
     return support_key_seqlen, support_query_seqlen
 
 
-def run_validation(model, patchfsl, data_loader, args, epoch):
+def run_validation(model, fsl_mod_inductive_mcnet, data_loader, args, epoch):
     model.eval()
     # Create labels and loggers
     label_query = torch.arange(args.n_way).repeat_interleave(args.query)  # Samples arranged in an 'aabbccdd' fashion
@@ -249,7 +249,12 @@ def run_validation(model, patchfsl, data_loader, args, epoch):
 
             with torch.enable_grad():
                 # optimise patch importance weights based on support set information and predict query logits
-                query_pred_logits = patchfsl(emb_support, emb_support, emb_query, label_support)
+                fsl_mod_inductive_mcnet.mode = "encoder"
+                emb_support = fsl_mod_inductive_mcnet(emb_support)
+                emb_query = fsl_mod_inductive_mcnet(emb_query)
+                fsl_mod_inductive_mcnet.mode = "cca"
+                query_pred_logits = fsl_mod_inductive_mcnet([emb_support, emb_query])
+                # query_pred_logits = patchfsl(emb_support, emb_support, emb_query, label_support)
 
             loss = F.cross_entropy(query_pred_logits, label_query)
 
@@ -528,10 +533,6 @@ def metatrain_fewture(args, wandb_run):
             emb_query = fsl_mod_inductive_mcnet(emb_query)
             fsl_mod_inductive_mcnet.mode="cca"
             query_pred_logits = fsl_mod_inductive_mcnet([emb_support, emb_query])
-            print("query_pred_logits:\n", query_pred_logits)
-            print("query_pred_logits.shape:", query_pred_logits.shape)
-            import sys
-            sys.exit(0)
             loss = F.cross_entropy(query_pred_logits, label_query)
             meta_optimiser.zero_grad()
             loss.backward()
@@ -571,7 +572,7 @@ def metatrain_fewture(args, wandb_run):
             log_stats.update({'meta_lr': meta_lr_scheduler.get_last_lr()[0]})
 
         print("Validating model...")
-        val_acc, val_conf, val_loss = run_validation(model, fsl_mod_inductive, val_loader, args, epoch)
+        val_acc, val_conf, val_loss = run_validation(model, fsl_mod_inductive_mcnet, val_loader, args, epoch)
         if val_acc > best_val_acc:
             torch.save(
                 dict(params=model.state_dict(), val_acc=val_acc, val_conf=val_conf, val_loss=val_loss, epoch=epoch,
