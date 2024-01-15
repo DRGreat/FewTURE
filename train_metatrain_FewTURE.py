@@ -14,6 +14,8 @@ DINO (https://github.com/facebookresearch/dino) and iBOT (https://github.com/byt
 import os
 import argparse
 import json
+from functools import partial
+
 import numpy as np
 import torch
 import torch.nn as nn
@@ -26,6 +28,7 @@ from tqdm import tqdm
 import models
 import utils
 from datasets.samplers import CategoriesSampler
+from models.cats import TransformerAggregator
 from models.method import Method
 
 ####################################################################
@@ -176,6 +179,7 @@ def get_patch_embeddings(model, data, args):
     emb_support, emb_query = patch_embeddings[:, :args.k_shot], patch_embeddings[:, args.k_shot:]
     return emb_support.reshape(-1, seq_len, emb_dim), emb_query.reshape(-1, seq_len, emb_dim)
 
+
 def get_mcnet_embeddings(model, data, args):
     """Function to retrieve all patch embeddings of provided data samples, split into support and query set samples;
     Data arranged in 'aaabbbcccdddeee' fashion, so must be split appropriately for support and query set"""
@@ -189,6 +193,7 @@ def get_mcnet_embeddings(model, data, args):
     patch_embeddings = patch_embeddings.view(args.n_way, -1, seq_len, emb_dim)
     emb_support, emb_query = patch_embeddings[:, :args.k_shot], patch_embeddings[:, args.k_shot:]
     return emb_support.reshape(-1, seq_len, emb_dim), emb_query.reshape(-1, seq_len, emb_dim)
+
 
 def compute_emb_cosine_similarity(support_emb: torch.Tensor, query_emb: torch.Tensor):
     """Compute the similarity matrix C between support and query embeddings using the cosine similarity.
@@ -368,6 +373,164 @@ class PatchFSL(nn.Module):
         return pred_query
 
 
+class NewPatchFSL(nn.Module):
+    def __init__(self, args, sup_emb_key_seq_len, sup_emb_query_seq_len):
+        super(PatchFSL, self).__init__()
+        self.total_len_support_key = args.n_way * args.k_shot * sup_emb_key_seq_len
+        # Mask to prevent image self-classification during adaptation
+        if args.k_shot > 1:  # E.g. for 5-shot scenarios, use 'full' block-diagonal logit matrix to mask entire image
+            self.block_mask = torch.block_diag(*[torch.ones(sup_emb_key_seq_len, sup_emb_query_seq_len) * -100.
+                                                 for _ in range(args.n_way * args.k_shot)]).cuda()
+        else:  # 1-shot experiments require diagonal in-image masking, since no other samples available
+            self.block_mask = torch.ones(sup_emb_key_seq_len * args.n_way * args.k_shot,
+                                         sup_emb_query_seq_len * args.n_way * args.k_shot).cuda()
+            self.block_mask = (self.block_mask - self.block_mask.triu(diagonal=args.block_mask_1shot)
+                               - self.block_mask.tril(diagonal=-args.block_mask_1shot)) * -100.
+
+        self.v = torch.zeros(self.total_len_support_key, requires_grad=True, device='cuda')
+
+        self.log_tau_c = torch.tensor([np.log(args.similarity_temp_init)], requires_grad=True, device='cuda')
+
+        self.peiv_init_state = True
+        self.disable_peiv_optimisation = args.disable_peiv_optimisation
+        self.optimiser_str = args.optimiser_online
+        self.opt_steps = args.optim_steps_online
+        self.lr_online = args.lr_online
+
+        self.loss_fn = torch.nn.CrossEntropyLoss()
+
+        # ---------------
+        self.args = args
+        feature_size = 10
+        vit_dim = feature_size ** 2
+        self.vit_dim = vit_dim
+        hyperpixel_ids = [3]
+        self.classification_head = nn.Linear(384, self.vit_dim)
+        self.encoder_dim = vit_dim
+        self.hyperpixel_ids = hyperpixel_ids
+
+        self.feature_size = feature_size
+        self.feature_proj_dim = feature_size
+        self.decoder_embed_dim = self.feature_size ** 2 + self.feature_proj_dim
+        self.proj = nn.Linear(vit_dim, self.feature_proj_dim)
+        self.decoder = TransformerAggregator(
+            img_size=self.feature_size, embed_dim=self.decoder_embed_dim, depth=4, num_heads=6,
+            mlp_ratio=4, qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6),
+            num_hyperpixel=len(hyperpixel_ids))
+
+    def _reset_peiv(self):
+        """Reset the patch embedding importance vector to zeros"""
+        # Re-create patch importance vector (and add to optimiser in _optimise_peiv() -- might exist a better option)
+        self.v = torch.zeros(self.total_len_support_key, requires_grad=True, device="cuda")
+
+    def corr(self, src, trg):
+        outer_product_matrix = torch.bmm(src.unsqueeze(2), trg.unsqueeze(1))
+        # 去除多余的维度
+        return outer_product_matrix.squeeze()
+
+    def _cca(self, spt, qry):
+
+        spt = spt.unsqueeze(1)
+        qry = qry.unsqueeze(1)
+
+        # shifting channel activations by the channel mean
+        # shape of spt : [25, 9]
+        # shape of qry : [75, 9]
+        way = spt.shape[0]
+        num_qry = qry.shape[0]
+
+        # ----------------------------------cat--------------------------------------#
+
+        spt_feats = spt.unsqueeze(0).repeat(num_qry, 1, 1).view(-1, *spt.size()[1:])  # shape of spt_feats [75x25, 9]
+        qry_feats = qry.unsqueeze(1).repeat(1, way, 1).view(-1, *qry.size()[1:])  # [75x25, 9]
+
+        corr = self.corr(spt_feats, qry_feats).unsqueeze(1).repeat(1, 1, 1, 1)  # the shape of corr : [75x25,2, 9, 9]
+        spt_feats_proj = self.proj(spt_feats).unsqueeze(1).unsqueeze(2).repeat(1, 1, self.vit_dim, 1)  # [75x25,2,9,3]
+        qry_feats_proj = self.proj(qry_feats).unsqueeze(1).unsqueeze(2).repeat(1, 1, self.vit_dim, 1)  # [75x25,2,9,3]
+
+        refined_corr = self.decoder(corr, spt_feats_proj, qry_feats_proj).view(num_qry, way, *[self.feature_size] * 4)
+        corr_s = refined_corr.view(num_qry, way, self.feature_size * self.feature_size,
+                                   self.feature_size * self.feature_size)
+        corr_q = refined_corr.view(num_qry, way, self.feature_size * self.feature_size,
+                                   self.feature_size * self.feature_size)
+
+        # applying softmax for each side
+        corr_s = F.softmax(corr_s / 5.0, dim=2)
+        corr_q = F.softmax(corr_q / 5.0, dim=3)
+
+        # suming up matching scores
+        attn_s = corr_s.sum(dim=[3])
+        attn_q = corr_q.sum(dim=[2])
+
+        # applying attention
+        spt_attended = attn_s * spt_feats.view(num_qry, way, *spt_feats.shape[1:])  # [75, 25, 9]
+        qry_attended = attn_q * qry_feats.view(num_qry, way, *qry_feats.shape[1:])  # [75, 25, 9]
+
+        spt_attended = spt_attended.mean(dim=0)
+        qry_attended = qry_attended.mean(dim=1)
+        return spt_attended.unsqueeze(1), qry_attended.unsqueeze(1)
+
+    def _predict(self, support_emb, query_emb, phase='infer'):
+        """Perform one forward pass using the provided embeddings as well as the module-internal
+        patch embedding importance vector 'peiv'. The phase parameter denotes whether the prediction is intended for
+        adapting peiv ('adapt') using the support set, or inference ('infer') on the query set."""
+        sup_emb_seq_len = support_emb.shape[1]
+        # Compute patch embedding similarity
+        support_emb, query_emb = self._cca(support_emb, query_emb)
+        C = compute_emb_cosine_similarity(support_emb, query_emb)
+        # Mask out block diagonal during adaptation to prevent image patches from classifying themselves and neighbours
+        if phase == 'adapt':
+            C = C + self.block_mask
+        # Add patch embedding importance vector (logits, corresponds to multiplication of probabilities)
+        pred = torch.add(C, self.v.unsqueeze(1))  # using broadcasting
+        # =========
+        # Rearrange the patch dimensions to combine the embeddings
+        pred = pred.view(args.n_way, args.k_shot * sup_emb_seq_len,
+                         query_emb.shape[0], query_emb.shape[1]).transpose(2, 3)
+        # Reshape to combine all embeddings related to one query image
+        pred = pred.reshape(args.n_way, args.k_shot * sup_emb_seq_len * query_emb.shape[1], query_emb.shape[0])
+        # Temperature scaling
+        pred = pred / torch.exp(self.log_tau_c)
+        # Gather log probs of all patches for each image
+        pred = torch.logsumexp(pred, dim=1)
+        # Return the predicted logits
+        return pred.transpose(0, 1)
+
+    def _optimise_peiv(self, support_emb_key, support_emb_query, supp_labels):
+        # Detach, we don't want to compute computational graph w.r.t. model
+        support_emb_key = support_emb_key.detach()
+        support_emb_query = support_emb_query.detach()
+        supp_labels = supp_labels.detach()
+        params_to_optimise = [self.v]
+        # Perform optimisation of patch embedding importance vector v; embeddings should be detached here!
+        self.optimiser_online = torch.optim.SGD(params=params_to_optimise, lr=self.lr_online)
+        self.optimiser_online.zero_grad()
+        # Run for a specific number of steps 'self.opt_steps' using SGD
+        for s in range(self.opt_steps):
+            support_pred = self._predict(support_emb_key, support_emb_query, phase='adapt')
+            loss = self.loss_fn(support_pred, supp_labels)
+            loss.backward()
+            self.optimiser_online.step()
+            self.optimiser_online.zero_grad()
+        # Set initialisation/reset flag to False since peiv is no longer 'just' initialised
+        self.peiv_init_state = False
+        return
+
+    def forward(self, support_emb_key, support_emb_query, query_emb, support_labels):
+        # Check whether patch importance vector has been reset to its initialisation state
+        support_emb_key = self.classification_head(support_emb_key)
+        support_emb_query = self.classification_head(support_emb_query)
+        query_emb = self.classification_head(query_emb)
+        if not self.peiv_init_state:
+            self._reset_peiv()
+        # Run optimisation on peiv
+        if not self.disable_peiv_optimisation:
+            self._optimise_peiv(support_emb_key, support_emb_query, support_labels)
+        # Retrieve the predictions of query set samples
+        pred_query = self._predict(support_emb_key, query_emb, phase='infer')
+        return pred_query
+
+
 def metatrain_fewture(args, wandb_run):
     torch.cuda.set_device(args.gpu)
     # Function is built upon elements from DeepEMD, CloserFSL, DINO and iBOT
@@ -468,7 +631,7 @@ def metatrain_fewture(args, wandb_run):
 
     # ============= Building the patchFSL online adaptation and classification module =================================
     seqlen_key, seqlen_qu = get_sup_emb_seqlengths(args)
-    fsl_mod_inductive = PatchFSL(args, 1, 1)
+    fsl_mod_inductive = NewPatchFSL(args, 1, 1)
     fsl_mod_inductive_mcnet = Method(args).cuda()
 
     # ============= Building the optimiser for meta fine-tuning and assigning the parameters ==========================
@@ -524,22 +687,19 @@ def metatrain_fewture(args, wandb_run):
 
         for i, batch in enumerate(train_tqdm_gen, 1):
             data, _ = [_.cuda() for _ in batch]
-            #---------------------------------
+            # ---------------------------------
             # Retrieve the patch embeddings for all samples, both support and query from Transformer backbone
             emb_support, emb_query = get_mcnet_embeddings(model, data, args)
-            fsl_mod_inductive_mcnet.mode="encoder"
-            emb_support = fsl_mod_inductive_mcnet(emb_support)
-            emb_query = fsl_mod_inductive_mcnet(emb_query)
             # Run patch-based module, online adaptation using support set info, followed by prediction of query classes
             query_pred_logits = fsl_mod_inductive(emb_support, emb_support, emb_query, label_support)
-            #------------------------------
+            # ------------------------------
             # emb_support, emb_query = get_mcnet_embeddings(model, data, args)
             # fsl_mod_inductive_mcnet.mode="encoder"
             # emb_support = fsl_mod_inductive_mcnet(emb_support.squeeze(1))
             # emb_query = fsl_mod_inductive_mcnet(emb_query.squeeze(1))
             # fsl_mod_inductive_mcnet.mode="cca"
             # query_pred_logits = fsl_mod_inductive_mcnet([emb_support, emb_query])
-            #-----------------------------------
+            # -----------------------------------
             loss = F.cross_entropy(query_pred_logits, label_query)
             meta_optimiser.zero_grad()
             loss.backward()
