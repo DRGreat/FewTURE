@@ -433,8 +433,8 @@ class NewPatchFSL(nn.Module):
     def _cca(self, spt, qry):
         spt = self.reduce_dim(spt)
         qry = self.reduce_dim(qry)
-        spt = spt.transpose(1, 2).reshape(spt.shape[0], 196, int(math.sqrt(spt.shape[1])), int(math.sqrt(spt.shape[1])))
-        qry = qry.transpose(1, 2).reshape(qry.shape[0], 196, int(math.sqrt(qry.shape[1])), int(math.sqrt(qry.shape[1])))
+        spt = spt.reshape(spt.shape[0], 196, int(math.sqrt(spt.shape[2])), int(math.sqrt(spt.shape[2])))
+        qry = qry.reshape(qry.shape[0], 196, int(math.sqrt(qry.shape[2])), int(math.sqrt(qry.shape[2])))
         # shifting channel activations by the channel mean
         spt = self.normalize_feature(spt)
         qry = self.normalize_feature(qry)
