@@ -496,8 +496,8 @@ class NewPatchFSL(nn.Module):
         spt = spt_attended.reshape(spt.shape[0], 196, -1)
         qry = qry_attended.reshape(qry.shape[0], 196, -1)
 
-        spt = self.expand_dim(spt)
-        qry = self.expand_dim(qry)
+        # spt = self.expand_dim(spt)
+        # qry = self.expand_dim(qry)
 
         return spt, qry
 
