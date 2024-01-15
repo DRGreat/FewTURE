@@ -36,8 +36,11 @@ USE_WANDB = False
 
 if USE_WANDB:
     import wandb
+
     # Note: Make sure to specify your username for correct logging
     WANDB_USER = 'username'
+
+
 ####################################################################
 
 
@@ -255,7 +258,7 @@ def run_validation(model, patchfsl, data_loader, args, epoch):
         m, pm = utils.compute_confidence_interval(val_acc_record)
         m_loss, _ = utils.compute_confidence_interval(val_loss_record)
         result_list = ['Ep {} | Overall Validation Loss {:.4f} | Validation Acc {:.4f}'
-                        .format(epoch, val_ave_loss.item(), val_ave_acc.item())]
+                       .format(epoch, val_ave_loss.item(), val_ave_acc.item())]
         result_list.append(
             'Ep {} | Validation Loss {:.4f} | Validation Acc {:.4f} + {:.4f}'.format(epoch, m_loss, m, pm))
         print(f'{result_list[1]}')
@@ -350,6 +353,7 @@ class PatchFSL(nn.Module):
         pred_query = self._predict(support_emb_key, query_emb, phase='infer')
         return pred_query
 
+
 class NewPatchFSL(nn.Module):
     def __init__(self, args, sup_emb_key_seq_len, sup_emb_query_seq_len):
         super(NewPatchFSL, self).__init__()
@@ -376,7 +380,7 @@ class NewPatchFSL(nn.Module):
 
         self.loss_fn = torch.nn.CrossEntropyLoss()
 
-        #--------------------
+        # --------------------
         self.args = args
 
         # channels =  [64]  + [160]  + [320]  + [640]
@@ -387,10 +391,11 @@ class NewPatchFSL(nn.Module):
         self.encoder_dim = 384
         self.hyperpixel_ids = hyperpixel_ids
 
-        self.feature_size = 14
-        self.feature_proj_dim = 4
+        self.feature_size = 3
+        self.feature_proj_dim = 3
         self.decoder_embed_dim = self.feature_size ** 2 + self.feature_proj_dim
 
+        self.reduce_dim = nn.Linear(196, self.feature_size ** 2)
         self.proj = nn.ModuleList([
             nn.Linear(384, self.feature_proj_dim)
         ])
@@ -412,17 +417,21 @@ class NewPatchFSL(nn.Module):
         x_var = torch.var(x, dim=dim, keepdim=True)
         x = torch.div(x - x_mean, torch.sqrt(x_var + eps))
         return x
+
     def _reset_peiv(self):
         """Reset the patch embedding importance vector to zeros"""
         # Re-create patch importance vector (and add to optimiser in _optimise_peiv() -- might exist a better option)
         self.v = torch.zeros(self.total_len_support_key, requires_grad=True, device="cuda")
+
     def corr(self, src, trg):
         return src.flatten(2).transpose(-1, -2) @ trg.flatten(2)
+
     def normalize_feature(self, x):
         return x - x.mean(1).unsqueeze(1)
+
     def _cca(self, spt, qry):
-        spt = spt.transpose(1,2).reshape(spt.shape[0], 384, int(math.sqrt(spt.shape[1])), int(math.sqrt(spt.shape[1])))
-        qry = qry.transpose(1,2).reshape(qry.shape[0], 384, int(math.sqrt(qry.shape[1])), int(math.sqrt(qry.shape[1])))
+        spt = spt.transpose(1, 2).reshape(spt.shape[0], 384, int(math.sqrt(spt.shape[1])), int(math.sqrt(spt.shape[1])))
+        qry = qry.transpose(1, 2).reshape(qry.shape[0], 384, int(math.sqrt(qry.shape[1])), int(math.sqrt(qry.shape[1])))
         # shifting channel activations by the channel mean
         spt = self.normalize_feature(spt)
         qry = self.normalize_feature(qry)
@@ -449,9 +458,6 @@ class NewPatchFSL(nn.Module):
         qry_feats = torch.stack(qry_feats_proj, dim=1)
         corr = torch.stack(corrs, dim=1)  # [75x25,4,9,9]
         # corr = self.mutual_nn_filter(corr)
-        print(spt_feats.shape)
-        print(qry_feats.shape)
-        print(corr.shape)
         refined_corr = self.decoder(corr, spt_feats, qry_feats).view(num_qry, way, *[self.feature_size] * 4)
         corr_s = refined_corr.view(num_qry, way, self.feature_size * self.feature_size, self.feature_size,
                                    self.feature_size)
@@ -483,10 +489,11 @@ class NewPatchFSL(nn.Module):
         # qry_attended = qry.unsqueeze(1).repeat(1, way, 1, 1, 1)
 
         # ----------------------------------replace--------------------------------------#
-        spt = spt_attended.reshape(spt.shape[0], 384, -1).transpose(1,2)
-        qry = qry_attended.reshape(qry.shape[0], 384, -1).transpose(1,2)
+        spt = spt_attended.reshape(spt.shape[0], 384, -1).transpose(1, 2)
+        qry = qry_attended.reshape(qry.shape[0], 384, -1).transpose(1, 2)
 
         return spt, qry
+
     def _predict(self, support_emb, query_emb, phase='infer'):
         """Perform one forward pass using the provided embeddings as well as the module-internal
         patch embedding importance vector 'peiv'. The phase parameter denotes whether the prediction is intended for
@@ -537,6 +544,9 @@ class NewPatchFSL(nn.Module):
 
     def forward(self, support_emb_key, support_emb_query, query_emb, support_labels):
         # Check whether patch importance vector has been reset to its initialisation state
+        support_emb_key = self.reduce_dim(support_emb_key.transpose(1, 2)).transpose(1, 2)
+        support_emb_query = self.reduce_dim(support_emb_query.transpose(1, 2)).transpose(1, 2)
+        query_emb = self.reduce_dim(query_emb.transpose(1, 2)).transpose(1, 2)
         if not self.peiv_init_state:
             self._reset_peiv()
         # Run optimisation on peiv
@@ -566,7 +576,7 @@ def metatrain_fewture(args, wandb_run):
     DataSet = set_up_dataset(args)
     train_dataset = DataSet('train', args)
     train_sampler = CategoriesSampler(train_dataset.label, args.num_episodes_per_epoch, args.n_way,
-                                               args.k_shot + args.query)
+                                      args.k_shot + args.query)
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_sampler=train_sampler,
                                                num_workers=args.num_workers, pin_memory=True)
     print(f"\nTraining {args.n_way}-way {args.k_shot}-shot learning scenario.")
@@ -575,7 +585,7 @@ def metatrain_fewture(args, wandb_run):
 
     val_dataset = DataSet('val', args)
     val_sampler = CategoriesSampler(val_dataset.label, args.num_validation_episodes, args.n_way,
-                                             args.k_shot + args.query)
+                                    args.k_shot + args.query)
     val_loader = torch.utils.data.DataLoader(val_dataset, batch_sampler=val_sampler,
                                              num_workers=args.num_workers, pin_memory=True)
     print(f"\nValidating using {args.num_validation_episodes} episodes.")
@@ -730,7 +740,7 @@ def metatrain_fewture(args, wandb_run):
         m, pm = utils.compute_confidence_interval(train_acc_record)
         m_loss, _ = utils.compute_confidence_interval(train_loss_record)
         result_list = ['Ep {} | Overall Train Loss {:.4f} | Train Acc {:.4f}'.format(epoch, train_ave_loss.item(),
-                                                                                    train_ave_acc.item())]
+                                                                                     train_ave_acc.item())]
         result_list.append('Ep {} | Train Loss {:.4f} | Train Acc {:.4f} + {:.4f}'.format(epoch, m_loss, m, pm))
         print(result_list[1])
         if args.meta_learn_similarity_temp:
@@ -824,7 +834,7 @@ if __name__ == '__main__':
     non_essential_keys = ['num_workers', 'output_dir', 'data_path']
     exp_hash = utils.get_hash_from_args(args, non_essential_keys)
     args.output_dir = os.path.join(args.output_dir, args.dataset + f'_{args.image_size}', args.arch,
-                                   f'ep_{args.chkpt_epoch+1}', f'bs_{total_bs}', f'outdim_{out_dim}', exp_hash)
+                                   f'ep_{args.chkpt_epoch + 1}', f'bs_{total_bs}', f'outdim_{out_dim}', exp_hash)
 
     Path(args.output_dir).mkdir(parents=True, exist_ok=True)
 
