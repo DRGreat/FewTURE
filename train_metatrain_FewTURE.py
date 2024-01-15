@@ -407,6 +407,11 @@ class NewPatchFSL(nn.Module):
 
         self.l2norm = FeatureL2Norm()
 
+    def gaussian_normalize(self, x, dim, eps=1e-05):
+        x_mean = torch.mean(x, dim=dim, keepdim=True)
+        x_var = torch.var(x, dim=dim, keepdim=True)
+        x = torch.div(x - x_mean, torch.sqrt(x_var + eps))
+        return x
     def _reset_peiv(self):
         """Reset the patch embedding importance vector to zeros"""
         # Re-create patch importance vector (and add to optimiser in _optimise_peiv() -- might exist a better option)
