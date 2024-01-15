@@ -441,6 +441,8 @@ class NewPatchFSL(nn.Module):
         way = spt.shape[0]
         num_qry = qry.shape[0]
 
+        print(spt.shape)
+        print(qry.shape)
         # ----------------------------------cat--------------------------------------#
         channels = [self.encoder_dim]
         spt_feats = spt.unsqueeze(0).repeat(num_qry, 1, 1, 1, 1).view(-1, *spt.size()[1:])  # [75x25,384,3,3]
@@ -494,6 +496,9 @@ class NewPatchFSL(nn.Module):
         # ----------------------------------replace--------------------------------------#
         spt = spt_attended.reshape(spt.shape[0], 196, -1)
         qry = qry_attended.reshape(qry.shape[0], 196, -1)
+
+        print(spt.shape)
+        print(qry.shape)
 
         spt = self.expand_dim(spt)
         qry = self.expand_dim(qry)
