@@ -524,15 +524,19 @@ def metatrain_fewture(args, wandb_run):
 
         for i, batch in enumerate(train_tqdm_gen, 1):
             data, _ = [_.cuda() for _ in batch]
+            #---------------------------------
             # Retrieve the patch embeddings for all samples, both support and query from Transformer backbone
-            emb_support, emb_query = get_mcnet_embeddings(model, data, args)
+            emb_support, emb_query = get_patch_embeddings(model, data, args)
             # Run patch-based module, online adaptation using support set info, followed by prediction of query classes
-            # query_pred_logits = fsl_mod_inductive(emb_support, emb_support, emb_query, label_support)
-            fsl_mod_inductive_mcnet.mode="encoder"
-            emb_support = fsl_mod_inductive_mcnet(emb_support)
-            emb_query = fsl_mod_inductive_mcnet(emb_query)
-            fsl_mod_inductive_mcnet.mode="cca"
-            query_pred_logits = fsl_mod_inductive_mcnet([emb_support, emb_query])
+            query_pred_logits = fsl_mod_inductive(emb_support, emb_support, emb_query, label_support)
+            #------------------------------
+            # emb_support, emb_query = get_mcnet_embeddings(model, data, args)
+            # fsl_mod_inductive_mcnet.mode="encoder"
+            # emb_support = fsl_mod_inductive_mcnet(emb_support)
+            # emb_query = fsl_mod_inductive_mcnet(emb_query)
+            # fsl_mod_inductive_mcnet.mode="cca"
+            # query_pred_logits = fsl_mod_inductive_mcnet([emb_support, emb_query])
+            #-----------------------------------
             loss = F.cross_entropy(query_pred_logits, label_query)
             meta_optimiser.zero_grad()
             loss.backward()
