@@ -546,9 +546,9 @@ class NewPatchFSL(nn.Module):
 
     def forward(self, support_emb_key, support_emb_query, query_emb, support_labels):
         # Check whether patch importance vector has been reset to its initialisation state
-        support_emb_key = self.reduce_dim(support_emb_key.transpose(1, 2)).transpose(1, 2)
-        support_emb_query = self.reduce_dim(support_emb_query.transpose(1, 2)).transpose(1, 2)
-        query_emb = self.reduce_dim(query_emb.transpose(1, 2)).transpose(1, 2)
+        # support_emb_key = self.reduce_dim(support_emb_key.transpose(1, 2)).transpose(1, 2)
+        # support_emb_query = self.reduce_dim(support_emb_query.transpose(1, 2)).transpose(1, 2)
+        # query_emb = self.reduce_dim(query_emb.transpose(1, 2)).transpose(1, 2)
         if not self.peiv_init_state:
             self._reset_peiv()
         # Run optimisation on peiv
