@@ -533,6 +533,8 @@ class NewPatchFSL(nn.Module):
         # Retrieve the predictions of query set samples
         print(support_emb_key.shape)
         print(query_emb.shape)
+        import sys
+        sys.exit(0)
         pred_query = self._predict(support_emb_key, query_emb, phase='infer')
         return pred_query
 
