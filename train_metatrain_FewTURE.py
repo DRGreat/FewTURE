@@ -398,7 +398,7 @@ class NewPatchFSL(nn.Module):
 
         # ---------------
         self.args = args
-        feature_size = 10
+        feature_size = 14
         vit_dim = feature_size ** 2
         self.vit_dim = vit_dim
         hyperpixel_ids = [3]
@@ -411,7 +411,7 @@ class NewPatchFSL(nn.Module):
         self.decoder_embed_dim = self.feature_size ** 2 + self.feature_proj_dim
         self.proj = nn.Linear(vit_dim, self.feature_proj_dim)
         self.decoder = TransformerAggregator(
-            img_size=self.feature_size, embed_dim=self.decoder_embed_dim, depth=4, num_heads=2,
+            img_size=self.feature_size, embed_dim=self.decoder_embed_dim, depth=4, num_heads=6,
             mlp_ratio=4, qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6),
             num_hyperpixel=len(hyperpixel_ids))
 
@@ -519,14 +519,14 @@ class NewPatchFSL(nn.Module):
         support_emb_key = self.classification_head(support_emb_key)
         support_emb_query = self.classification_head(support_emb_query)
         query_emb = self.classification_head(query_emb)
-
-        if not self.peiv_init_state:
-            self._reset_peiv()
-        # Run optimisation on peiv
-
-        if not self.disable_peiv_optimisation:
-            self._optimise_peiv(support_emb_key, support_emb_query, support_labels)
-        # Retrieve the predictions of query set samples
+        #
+        # if not self.peiv_init_state:
+        #     self._reset_peiv()
+        # # Run optimisation on peiv
+        #
+        # if not self.disable_peiv_optimisation:
+        #     self._optimise_peiv(support_emb_key, support_emb_query, support_labels)
+        # # Retrieve the predictions of query set samples
 
         pred_query = self._predict(support_emb_key, query_emb, phase='infer')
         return pred_query
