@@ -527,7 +527,7 @@ def metatrain_fewture(args, wandb_run):
             emb_support = fsl_mod_inductive_mcnet(emb_support)
             emb_query = fsl_mod_inductive_mcnet(emb_query)
             fsl_mod_inductive_mcnet.mode="cca"
-            query_pred_logits = fsl_mod_inductive_mcnet(emb_support, emb_query)
+            query_pred_logits = fsl_mod_inductive_mcnet([emb_support, emb_query])
             print("query_pred_logits:\n", query_pred_logits)
             print("query_pred_logits.shape:", query_pred_logits.shape)
             import sys
