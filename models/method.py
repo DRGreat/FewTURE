@@ -69,8 +69,8 @@ class Method(nn.Module):
         corr_q = refined_corr.view(num_qry, way, self.feature_size*self.feature_size, self.feature_size*self.feature_size)
 
         # applying softmax for each side
-        corr_s = F.softmax(corr_s / self.args.temperature_attn, dim=2)
-        corr_q = F.softmax(corr_q / self.args.temperature_attn, dim=3)
+        corr_s = F.softmax(corr_s / 5.0, dim=2)
+        corr_q = F.softmax(corr_q / 5.0, dim=3)
 
         # suming up matching scores
         attn_s = corr_s.sum(dim=[3])
@@ -88,16 +88,16 @@ class Method(nn.Module):
         # ----------------------------------replace--------------------------------------#
 
         # averaging embeddings for k > 1 shots
-        if self.args.shot > 1:
-            spt_attended = spt_attended.view(num_qry, self.args.shot, self.args.way, *spt_attended.shape[2:])
-            qry_attended = qry_attended.view(num_qry, self.args.shot, self.args.way, *qry_attended.shape[2:])
+        if self.args.k_shot > 1:
+            spt_attended = spt_attended.view(num_qry, self.args.k_shot, self.args.n_way, *spt_attended.shape[2:])
+            qry_attended = qry_attended.view(num_qry, self.args.k_shot, self.args.n_way, *qry_attended.shape[2:])
             spt_attended = spt_attended.mean(dim=1)
             qry_attended = qry_attended.mean(dim=1)
 
 
         # similarity_matrix = F.cosine_similarity(spt_attended, qry_attended, dim=-1)
         similarity_matrix = -F.pairwise_distance(spt_attended, qry_attended, p=2)
-        return similarity_matrix / self.args.temperature
+        return similarity_matrix / 0.2
 
     def encode(self, x):
         x = self.classification_head(x)
