@@ -10,7 +10,7 @@ are inspired by components of the following repositories:
 DeepEMD (https://github.com/icoz69/DeepEMD), CloserLookFewShot (https://github.com/wyharveychen/CloserLookFewShot),
 DINO (https://github.com/facebookresearch/dino) and iBOT (https://github.com/bytedance/ibot)
 """
-
+import math
 import os
 import argparse
 import json
@@ -412,12 +412,79 @@ class NewPatchFSL(nn.Module):
         # Re-create patch importance vector (and add to optimiser in _optimise_peiv() -- might exist a better option)
         self.v = torch.zeros(self.total_len_support_key, requires_grad=True, device="cuda")
 
+    def normalize_feature(self, x):
+        return x - x.mean(1).unsqueeze(1)
+    def _cca(self, spt, qry):
+        spt = spt.transpose(1,2).reshape(spt.shape[0], 384, math.sqrt(spt.shape[1]), math.sqrt(spt.shape[1]))
+        qry = qry.transpose(1,2).reshape(qry.shape[0], 384, math.sqrt(qry.shape[1]), math.sqrt(qry.shape[1]))
+        # shifting channel activations by the channel mean
+        spt = self.normalize_feature(spt)
+        qry = self.normalize_feature(qry)
+        way = spt.shape[0]
+        num_qry = qry.shape[0]
+
+        # ----------------------------------cat--------------------------------------#
+        channels = [384]
+        spt_feats = spt.unsqueeze(0).repeat(num_qry, 1, 1, 1, 1).view(-1, *spt.size()[1:])  # [75x25,384,3,3]
+        qry_feats = qry.unsqueeze(1).repeat(1, way, 1, 1, 1).view(-1, *qry.size()[1:])  # [75x25,384,3,3]
+        spt_feats = torch.split(spt_feats, channels, dim=1)
+        qry_feats = torch.split(qry_feats, channels, dim=1)
+        corrs = []
+        spt_feats_proj = []
+        qry_feats_proj = []
+        for i, (src, tgt) in enumerate(zip(spt_feats, qry_feats)):
+            # corr = self.get_correlation_map(src, tgt, i, num_qry, way) #[75x25,9,9]
+            corr = self.corr(self.l2norm(src), self.l2norm(tgt))
+
+            corrs.append(corr)
+            spt_feats_proj.append(self.proj[i](src.flatten(2).transpose(-1, -2)))  # [75x25,9,3]
+            qry_feats_proj.append(self.proj[i](tgt.flatten(2).transpose(-1, -2)))  # [75x25,9,3]
+
+        spt_feats = torch.stack(spt_feats_proj, dim=1)
+        qry_feats = torch.stack(qry_feats_proj, dim=1)
+        corr = torch.stack(corrs, dim=1)  # [75x25,4,9,9]
+        # corr = self.mutual_nn_filter(corr)
+        refined_corr = self.decoder(corr, spt_feats, qry_feats).view(num_qry, way, *[self.feature_size] * 4)
+        corr_s = refined_corr.view(num_qry, way, self.feature_size * self.feature_size, self.feature_size,
+                                   self.feature_size)
+        corr_q = refined_corr.view(num_qry, way, self.feature_size, self.feature_size,
+                                   self.feature_size * self.feature_size)
+        # normalizing the entities for each side to be zero-mean and unit-variance to stabilize training
+        corr_s = self.gaussian_normalize(corr_s, dim=2)
+        corr_q = self.gaussian_normalize(corr_q, dim=4)
+
+        # applying softmax for each side
+        corr_s = F.softmax(corr_s / self.args.temperature_attn, dim=2)
+        corr_s = corr_s.view(num_qry, way, self.feature_size, self.feature_size, self.feature_size,
+                             self.feature_size)
+        corr_q = F.softmax(corr_q / self.args.temperature_attn, dim=4)
+        corr_q = corr_q.view(num_qry, way, self.feature_size, self.feature_size, self.feature_size,
+                             self.feature_size)
+
+        # suming up matching scores
+        attn_s = corr_s.sum(dim=[4, 5])
+        attn_q = corr_q.sum(dim=[2, 3])
+
+        # applying attention
+        spt_attended = attn_s.unsqueeze(2) * spt.unsqueeze(0).mean(dim=0)
+        qry_attended = attn_q.unsqueeze(2) * qry.unsqueeze(1).mean(dim=1)
+
+        # ----------------------------------cat--------------------------------------#
+
+        # spt_attended = spt.unsqueeze(0).repeat(num_qry, 1, 1, 1, 1)
+        # qry_attended = qry.unsqueeze(1).repeat(1, way, 1, 1, 1)
+
+        # ----------------------------------replace--------------------------------------#
+        spt = spt_attended.reshape(spt.shape[0], 384, -1).transpose(1,2)
+        qry = qry_attended.reshape(qry.shape[0], 384, -1).transpose(1,2)
+
+        return spt, qry
     def _predict(self, support_emb, query_emb, phase='infer'):
-        print(query_emb.shape)
         """Perform one forward pass using the provided embeddings as well as the module-internal
         patch embedding importance vector 'peiv'. The phase parameter denotes whether the prediction is intended for
         adapting peiv ('adapt') using the support set, or inference ('infer') on the query set."""
         sup_emb_seq_len = support_emb.shape[1]
+        support_emb, query_emb = self._cca(support_emb, query_emb)
         # Compute patch embedding similarity
         C = compute_emb_cosine_similarity(support_emb, query_emb)
 
