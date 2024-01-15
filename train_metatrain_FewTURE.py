@@ -109,7 +109,7 @@ def get_args_parser():
                                 query set sample embeddings, w/o any further adaptation.""")
 
     # Dataset related parameters
-    parser.add_argument('--image_size', type=int, default=84,
+    parser.add_argument('--image_size', type=int, default=224,
                         help="""Size of the squared input images, 224 for imagenet-style.""")
     parser.add_argument('--dataset', default='miniimagenet', type=str,
                         choices=['miniimagenet', 'tieredimagenet', 'fc100', 'cifar_fs'],
