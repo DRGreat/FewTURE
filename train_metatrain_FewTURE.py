@@ -131,6 +131,7 @@ def get_args_parser():
                             If left empty, results will be stored in './meta_fewture/...'.""")
     parser.add_argument('--seed', default=10, type=int, help="""Random seed.""")
     parser.add_argument('--num_workers', default=8, type=int, help="""Number of data loading workers per GPU.""")
+    parser.add_argument('--gpu', default=0, type=int, help="""gpu.""")
 
     return parser
 
@@ -347,6 +348,7 @@ class PatchFSL(nn.Module):
 
 
 def metatrain_fewture(args, wandb_run):
+    torch.cuda.set_device(args.gpu)
     # Function is built upon elements from DeepEMD, CloserFSL, DINO and iBOT
     # Set seed and display args used for evaluation
     utils.fix_random_seeds(args.seed)
