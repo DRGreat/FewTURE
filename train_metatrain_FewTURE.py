@@ -413,16 +413,13 @@ class NewPatchFSL(nn.Module):
         self.v = torch.zeros(self.total_len_support_key, requires_grad=True, device="cuda")
 
     def _predict(self, support_emb, query_emb, phase='infer'):
-        print(support_emb.shape)
-        print(query_emb.shape)
-        import sys
-        sys.exit(0)
         """Perform one forward pass using the provided embeddings as well as the module-internal
         patch embedding importance vector 'peiv'. The phase parameter denotes whether the prediction is intended for
         adapting peiv ('adapt') using the support set, or inference ('infer') on the query set."""
         sup_emb_seq_len = support_emb.shape[1]
         # Compute patch embedding similarity
         C = compute_emb_cosine_similarity(support_emb, query_emb)
+        print(C.shape)
         # Mask out block diagonal during adaptation to prevent image patches from classifying themselves and neighbours
         if phase == 'adapt':
             C = C + self.block_mask
