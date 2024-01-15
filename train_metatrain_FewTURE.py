@@ -32,8 +32,11 @@ USE_WANDB = False
 
 if USE_WANDB:
     import wandb
+
     # Note: Make sure to specify your username for correct logging
     WANDB_USER = 'username'
+
+
 ####################################################################
 
 
@@ -250,7 +253,7 @@ def run_validation(model, patchfsl, data_loader, args, epoch):
         m, pm = utils.compute_confidence_interval(val_acc_record)
         m_loss, _ = utils.compute_confidence_interval(val_loss_record)
         result_list = ['Ep {} | Overall Validation Loss {:.4f} | Validation Acc {:.4f}'
-                        .format(epoch, val_ave_loss.item(), val_ave_acc.item())]
+                       .format(epoch, val_ave_loss.item(), val_ave_acc.item())]
         result_list.append(
             'Ep {} | Validation Loss {:.4f} | Validation Acc {:.4f} + {:.4f}'.format(epoch, m_loss, m, pm))
         print(f'{result_list[1]}')
@@ -364,7 +367,7 @@ def metatrain_fewture(args, wandb_run):
     DataSet = set_up_dataset(args)
     train_dataset = DataSet('train', args)
     train_sampler = CategoriesSampler(train_dataset.label, args.num_episodes_per_epoch, args.n_way,
-                                               args.k_shot + args.query)
+                                      args.k_shot + args.query)
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_sampler=train_sampler,
                                                num_workers=args.num_workers, pin_memory=True)
     print(f"\nTraining {args.n_way}-way {args.k_shot}-shot learning scenario.")
@@ -373,7 +376,7 @@ def metatrain_fewture(args, wandb_run):
 
     val_dataset = DataSet('val', args)
     val_sampler = CategoriesSampler(val_dataset.label, args.num_validation_episodes, args.n_way,
-                                             args.k_shot + args.query)
+                                    args.k_shot + args.query)
     val_loader = torch.utils.data.DataLoader(val_dataset, batch_sampler=val_sampler,
                                              num_workers=args.num_workers, pin_memory=True)
     print(f"\nValidating using {args.num_validation_episodes} episodes.")
@@ -504,7 +507,10 @@ def metatrain_fewture(args, wandb_run):
             emb_support, emb_query = get_patch_embeddings(model, data, args)
             # Run patch-based module, online adaptation using support set info, followed by prediction of query classes
             query_pred_logits = fsl_mod_inductive(emb_support, emb_support, emb_query, label_support)
-
+            print("query_pred_logits:\n" + query_pred_logits)
+            print("emb_support.shape:" + emb_support.shape)
+            print("emb_query.shape:" + emb_query.shape)
+            print("query_pred_logits.shape:" + query_pred_logits.shape)
             loss = F.cross_entropy(query_pred_logits, label_query)
             meta_optimiser.zero_grad()
             loss.backward()
@@ -528,7 +534,7 @@ def metatrain_fewture(args, wandb_run):
         m, pm = utils.compute_confidence_interval(train_acc_record)
         m_loss, _ = utils.compute_confidence_interval(train_loss_record)
         result_list = ['Ep {} | Overall Train Loss {:.4f} | Train Acc {:.4f}'.format(epoch, train_ave_loss.item(),
-                                                                                    train_ave_acc.item())]
+                                                                                     train_ave_acc.item())]
         result_list.append('Ep {} | Train Loss {:.4f} | Train Acc {:.4f} + {:.4f}'.format(epoch, m_loss, m, pm))
         print(result_list[1])
         if args.meta_learn_similarity_temp:
@@ -622,7 +628,7 @@ if __name__ == '__main__':
     non_essential_keys = ['num_workers', 'output_dir', 'data_path']
     exp_hash = utils.get_hash_from_args(args, non_essential_keys)
     args.output_dir = os.path.join(args.output_dir, args.dataset + f'_{args.image_size}', args.arch,
-                                   f'ep_{args.chkpt_epoch+1}', f'bs_{total_bs}', f'outdim_{out_dim}', exp_hash)
+                                   f'ep_{args.chkpt_epoch + 1}', f'bs_{total_bs}', f'outdim_{out_dim}', exp_hash)
 
     Path(args.output_dir).mkdir(parents=True, exist_ok=True)
 
