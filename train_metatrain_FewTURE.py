@@ -440,9 +440,6 @@ class NewPatchFSL(nn.Module):
         qry = self.normalize_feature(qry)
         way = spt.shape[0]
         num_qry = qry.shape[0]
-
-        print(spt.shape)
-        print(qry.shape)
         # ----------------------------------cat--------------------------------------#
         channels = [self.encoder_dim]
         spt_feats = spt.unsqueeze(0).repeat(num_qry, 1, 1, 1, 1).view(-1, *spt.size()[1:])  # [75x25,384,3,3]
@@ -499,11 +496,6 @@ class NewPatchFSL(nn.Module):
         spt = spt_attended.reshape(spt.shape[0], 196, -1)
         qry = qry_attended.reshape(qry.shape[0], 196, -1)
 
-        print(spt.shape)
-        print(qry.shape)
-
-
-
         spt = self.expand_dim(spt)
         qry = self.expand_dim(qry)
 
@@ -515,8 +507,7 @@ class NewPatchFSL(nn.Module):
         adapting peiv ('adapt') using the support set, or inference ('infer') on the query set."""
         sup_emb_seq_len = support_emb.shape[1]
         support_emb, query_emb = self._cca(support_emb, query_emb)
-        print(support_emb.shape)
-        print(query_emb.shape)
+
         # Compute patch embedding similarity
         C = compute_emb_cosine_similarity(support_emb, query_emb)
 
