@@ -1,16 +1,10 @@
-import os
-import sys
-from operator import add
-from functools import reduce, partial
 
+from functools import reduce, partial
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 import numpy as np
 import timm
 from timm.models.layers import DropPath, trunc_normal_
-# import torchvision.models as models
-
 from models.mod import FeatureL2Norm, unnormalise_and_convert_mapping_to_flow
 
 

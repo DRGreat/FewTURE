@@ -1,18 +1,7 @@
-import torch
-import torch.nn as nn
 import torch.nn.functional as F
-
 from models.cats import TransformerAggregator
 from functools import reduce, partial
-from sklearn.manifold import TSNE
-import numpy as np
-import matplotlib.pyplot as plt
-
-plt.rcParams['font.sans-serif'] = ['Times New Roman']
-import sys
-from vit_pytorch import ViT
 from common.utils import *
-
 
 class Method(nn.Module):
 
