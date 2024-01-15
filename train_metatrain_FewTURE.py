@@ -524,15 +524,15 @@ class NewPatchFSL(nn.Module):
         support_emb_key = self.classification_head(support_emb_key)
         support_emb_query = self.classification_head(support_emb_query)
         query_emb = self.classification_head(query_emb)
-        print(support_emb_key.shape)
-        print(support_emb_query.shape)
-        print(query_emb.shape)
+
         if not self.peiv_init_state:
             self._reset_peiv()
         # Run optimisation on peiv
         if not self.disable_peiv_optimisation:
             self._optimise_peiv(support_emb_key, support_emb_query, support_labels)
         # Retrieve the predictions of query set samples
+        print(support_emb_key.shape)
+        print(query_emb.shape)
         pred_query = self._predict(support_emb_key, query_emb, phase='infer')
         return pred_query
 
