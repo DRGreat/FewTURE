@@ -509,9 +509,9 @@ def metatrain_fewture(args, wandb_run):
             # Run patch-based module, online adaptation using support set info, followed by prediction of query classes
             query_pred_logits = fsl_mod_inductive(emb_support, emb_support, emb_query, label_support)
             print("query_pred_logits:\n" + query_pred_logits)
-            print("emb_support.shape:" + emb_support.shape)
-            print("emb_query.shape:" + emb_query.shape)
-            print("query_pred_logits.shape:" + query_pred_logits.shape)
+            print("emb_support.shape:", emb_support.shape)
+            print("emb_query.shape:", emb_query.shape)
+            print("query_pred_logits.shape:", query_pred_logits.shape)
             import sys
             sys.exit(0)
             loss = F.cross_entropy(query_pred_logits, label_query)
