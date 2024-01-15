@@ -398,7 +398,7 @@ class NewPatchFSL(nn.Module):
 
         # ---------------
         self.args = args
-        feature_size = 14
+        feature_size = 10
         vit_dim = feature_size ** 2
         self.vit_dim = vit_dim
         hyperpixel_ids = [3]
