@@ -411,7 +411,8 @@ class NewPatchFSL(nn.Module):
         """Reset the patch embedding importance vector to zeros"""
         # Re-create patch importance vector (and add to optimiser in _optimise_peiv() -- might exist a better option)
         self.v = torch.zeros(self.total_len_support_key, requires_grad=True, device="cuda")
-
+    def corr(self, src, trg):
+        return src.flatten(2).transpose(-1, -2) @ trg.flatten(2)
     def normalize_feature(self, x):
         return x - x.mean(1).unsqueeze(1)
     def _cca(self, spt, qry):
