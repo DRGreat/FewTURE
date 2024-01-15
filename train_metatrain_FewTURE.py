@@ -139,6 +139,7 @@ def get_args_parser():
     parser.add_argument('--seed', default=10, type=int, help="""Random seed.""")
     parser.add_argument('--num_workers', default=8, type=int, help="""Number of data loading workers per GPU.""")
     parser.add_argument('--gpu', default=0, type=int, help="""gpu.""")
+    parser.add_argument('--feature_size', default=5, type=int, help="""feature_size.""")
 
     return parser
 
@@ -391,8 +392,8 @@ class NewPatchFSL(nn.Module):
         self.encoder_dim = 196
         self.hyperpixel_ids = hyperpixel_ids
 
-        self.feature_size = 5
-        self.feature_proj_dim = 5
+        self.feature_size = args.feature_size
+        self.feature_proj_dim = self.feature_size
         self.decoder_embed_dim = self.feature_size ** 2 + self.feature_proj_dim
 
         self.reduce_dim = nn.Linear(384, self.feature_size ** 2)
