@@ -388,7 +388,7 @@ class NewPatchFSL(nn.Module):
         # self.encoder = ResNet12(args=args,feature_size=feature_size, hyperpixel_ids=hyperpixel_ids)
 
         hyperpixel_ids = [0]
-        self.encoder_dim = 384
+        self.encoder_dim = 196
         self.hyperpixel_ids = hyperpixel_ids
 
         self.feature_size = 3
