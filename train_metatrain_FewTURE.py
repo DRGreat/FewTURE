@@ -511,6 +511,8 @@ def metatrain_fewture(args, wandb_run):
             print("emb_support.shape:" + emb_support.shape)
             print("emb_query.shape:" + emb_query.shape)
             print("query_pred_logits.shape:" + query_pred_logits.shape)
+            import sys
+            sys.exit(0)
             loss = F.cross_entropy(query_pred_logits, label_query)
             meta_optimiser.zero_grad()
             loss.backward()
