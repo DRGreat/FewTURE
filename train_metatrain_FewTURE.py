@@ -462,10 +462,10 @@ class NewPatchFSL(nn.Module):
         corr_q = self.gaussian_normalize(corr_q, dim=4)
 
         # applying softmax for each side
-        corr_s = F.softmax(corr_s / self.args.temperature_attn, dim=2)
+        corr_s = F.softmax(corr_s / 5.0, dim=2)
         corr_s = corr_s.view(num_qry, way, self.feature_size, self.feature_size, self.feature_size,
                              self.feature_size)
-        corr_q = F.softmax(corr_q / self.args.temperature_attn, dim=4)
+        corr_q = F.softmax(corr_q / 5.0, dim=4)
         corr_q = corr_q.view(num_qry, way, self.feature_size, self.feature_size, self.feature_size,
                              self.feature_size)
 
