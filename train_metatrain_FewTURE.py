@@ -402,7 +402,7 @@ class NewPatchFSL(nn.Module):
         ])
         self.cca_1x1 = nn.ModuleList([
             nn.Sequential(
-                nn.Conv2d(384, 64, kernel_size=1, bias=False),
+                nn.Conv2d(196, 64, kernel_size=1, bias=False),
                 nn.BatchNorm2d(64),
                 nn.ReLU())
         ])
@@ -442,7 +442,7 @@ class NewPatchFSL(nn.Module):
         num_qry = qry.shape[0]
 
         # ----------------------------------cat--------------------------------------#
-        channels = [384]
+        channels = [self.encoder_dim]
         spt_feats = spt.unsqueeze(0).repeat(num_qry, 1, 1, 1, 1).view(-1, *spt.size()[1:])  # [75x25,384,3,3]
         qry_feats = qry.unsqueeze(1).repeat(1, way, 1, 1, 1).view(-1, *qry.size()[1:])  # [75x25,384,3,3]
         spt_feats = torch.split(spt_feats, channels, dim=1)
