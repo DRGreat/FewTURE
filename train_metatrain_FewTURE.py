@@ -400,9 +400,6 @@ class NewPatchFSL(nn.Module):
                 nn.BatchNorm2d(64),
                 nn.ReLU())
         ])
-        self.scr_module = nn.ModuleList([
-            self._make_scr_layer(planes=[384, 64, 64, 64, 384])
-        ])
         self.decoder = TransformerAggregator(
             img_size=self.feature_size, embed_dim=self.decoder_embed_dim, depth=1, num_heads=2,
             mlp_ratio=4, qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6),
