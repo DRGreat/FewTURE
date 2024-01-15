@@ -181,7 +181,7 @@ def get_mcnet_embeddings(model, data, args):
     # Forward pass through backbone model;
     # Important: This contains the [cls] token at position 0 ([:,0]) and the patch-embeddings after that([:,1:end]).
     # We thus remove the [cls] token
-    patch_embeddings = model(data)[:, 0]
+    patch_embeddings = model(data)[:, 0].unsqueeze(1)
     # temp size values for reshaping
     bs, seq_len, emb_dim = patch_embeddings.shape[0], patch_embeddings.shape[1], patch_embeddings.shape[2]
     # Split the data accordingly into support set and query set!  E.g. 5|75 (5way,1-shot); 25|75 (5way, 5-shot)
