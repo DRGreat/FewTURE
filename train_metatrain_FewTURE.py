@@ -437,6 +437,9 @@ class NewPatchFSL(nn.Module):
         # Gather log probs of all patches for each image
         pred = torch.logsumexp(pred, dim=1)
         # Return the predicted logits
+        print(pred.transpose(0,1).shape)
+        import sys
+        sys.exit(0)
         return pred.transpose(0, 1)
 
     def _optimise_peiv(self, support_emb_key, support_emb_query, supp_labels):
@@ -630,9 +633,6 @@ def metatrain_fewture(args, wandb_run):
             emb_support, emb_query = get_patch_embeddings(model, data, args)
             # Run patch-based module, online adaptation using support set info, followed by prediction of query classes
             query_pred_logits = fsl_mod_inductive(emb_support, emb_support, emb_query, label_support)
-            print(query_pred_logits.shape)
-            import sys
-            sys.exit(0)
 
             loss = F.cross_entropy(query_pred_logits, label_query)
             meta_optimiser.zero_grad()
