@@ -419,9 +419,7 @@ class NewPatchFSL(nn.Module):
         sup_emb_seq_len = support_emb.shape[1]
         # Compute patch embedding similarity
         C = compute_emb_cosine_similarity(support_emb, query_emb)
-        print(C.shape)
-        import sys
-        sys.exit(0)
+
         # Mask out block diagonal during adaptation to prevent image patches from classifying themselves and neighbours
         if phase == 'adapt':
             C = C + self.block_mask
@@ -432,6 +430,9 @@ class NewPatchFSL(nn.Module):
         pred = pred.view(args.n_way, args.k_shot * sup_emb_seq_len,
                          query_emb.shape[0], query_emb.shape[1]).transpose(2, 3)
         # Reshape to combine all embeddings related to one query image
+        print(pred.shape)
+        import sys
+        sys.exit(0)
         pred = pred.reshape(args.n_way, args.k_shot * sup_emb_seq_len * query_emb.shape[1], query_emb.shape[0])
         # Temperature scaling
         pred = pred / torch.exp(self.log_tau_c)
