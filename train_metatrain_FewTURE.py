@@ -473,7 +473,7 @@ class NewPatchFSL(nn.Module):
         adapting peiv ('adapt') using the support set, or inference ('infer') on the query set."""
         sup_emb_seq_len = support_emb.shape[1]
         # Compute patch embedding similarity
-        support_emb, query_emb = self._cca(support_emb, query_emb)
+        # support_emb, query_emb = self._cca(support_emb, query_emb)
         C = compute_emb_cosine_similarity(support_emb, query_emb)
         # Mask out block diagonal during adaptation to prevent image patches from classifying themselves and neighbours
         if phase == 'adapt':
@@ -516,17 +516,10 @@ class NewPatchFSL(nn.Module):
     def forward(self, support_emb_key, support_emb_query, query_emb, support_labels):
 
         # Check whether patch importance vector has been reset to its initialisation state
-        support_emb_key = self.classification_head(support_emb_key)
-        support_emb_query = self.classification_head(support_emb_query)
-        query_emb = self.classification_head(query_emb)
-        #
-        # if not self.peiv_init_state:
-        #     self._reset_peiv()
-        # # Run optimisation on peiv
-        #
-        # if not self.disable_peiv_optimisation:
-        #     self._optimise_peiv(support_emb_key, support_emb_query, support_labels)
-        # # Retrieve the predictions of query set samples
+        # support_emb_key = self.classification_head(support_emb_key)
+        # support_emb_query = self.classification_head(support_emb_query)
+        # query_emb = self.classification_head(query_emb)
+
 
         pred_query = self._predict(support_emb_key, query_emb, phase='infer')
         return pred_query
