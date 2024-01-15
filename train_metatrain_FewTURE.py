@@ -388,7 +388,7 @@ class NewPatchFSL(nn.Module):
         self.hyperpixel_ids = hyperpixel_ids
 
         self.feature_size = 14
-        self.feature_proj_dim = 3
+        self.feature_proj_dim = 4
         self.decoder_embed_dim = self.feature_size ** 2 + self.feature_proj_dim
 
         self.proj = nn.ModuleList([
