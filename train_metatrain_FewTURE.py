@@ -413,6 +413,7 @@ class NewPatchFSL(nn.Module):
         self.v = torch.zeros(self.total_len_support_key, requires_grad=True, device="cuda")
 
     def _predict(self, support_emb, query_emb, phase='infer'):
+        print(query_emb.shape)
         """Perform one forward pass using the provided embeddings as well as the module-internal
         patch embedding importance vector 'peiv'. The phase parameter denotes whether the prediction is intended for
         adapting peiv ('adapt') using the support set, or inference ('infer') on the query set."""
@@ -468,7 +469,6 @@ class NewPatchFSL(nn.Module):
             self._optimise_peiv(support_emb_key, support_emb_query, support_labels)
         # Retrieve the predictions of query set samples
         pred_query = self._predict(support_emb_key, query_emb, phase='infer')
-        print(pred_query.shape)
         return pred_query
 
 
