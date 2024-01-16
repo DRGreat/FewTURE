@@ -408,7 +408,7 @@ class NewPatchFSL(nn.Module):
                 nn.ReLU())
         ])
         self.decoder = TransformerAggregator(
-            img_size=self.feature_size, embed_dim=self.decoder_embed_dim, depth=1, num_heads=2,
+            img_size=self.feature_size, embed_dim=self.decoder_embed_dim, depth=4, num_heads=2,
             mlp_ratio=4, qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6),
             num_hyperpixel=len(hyperpixel_ids))
 
