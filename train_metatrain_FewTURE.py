@@ -389,15 +389,15 @@ class NewPatchFSL(nn.Module):
         # self.encoder = ResNet12(args=args,feature_size=feature_size, hyperpixel_ids=hyperpixel_ids)
 
         hyperpixel_ids = [0]
-        self.encoder_dim = 196
+        self.encoder_dim = 384
         self.hyperpixel_ids = hyperpixel_ids
 
         self.feature_size = args.feature_size
         self.feature_proj_dim = self.feature_size
         self.decoder_embed_dim = self.feature_size ** 2 + self.feature_proj_dim
 
-        self.reduce_dim = nn.Linear(384, self.feature_size ** 2)
-        self.expand_dim = nn.Linear(self.feature_size ** 2, 384)
+        self.reduce_dim = nn.Linear(196, self.feature_size ** 2)
+        self.expand_dim = nn.Linear(self.feature_size ** 2, 196)
         self.proj = nn.ModuleList([
             nn.Linear(self.encoder_dim, self.feature_proj_dim)
         ])
@@ -432,10 +432,10 @@ class NewPatchFSL(nn.Module):
         return x - x.mean(1).unsqueeze(1)
 
     def _cca(self, spt, qry):
-        spt = self.reduce_dim(spt)
-        qry = self.reduce_dim(qry)
-        spt = spt.reshape(spt.shape[0], 196, int(math.sqrt(spt.shape[2])), int(math.sqrt(spt.shape[2])))
-        qry = qry.reshape(qry.shape[0], 196, int(math.sqrt(qry.shape[2])), int(math.sqrt(qry.shape[2])))
+        spt = self.reduce_dim(spt.transpose(1, 2))
+        qry = self.reduce_dim(qry.transpose(1, 2))
+        spt = spt.reshape(spt.shape[0], self.encoder_dim, int(math.sqrt(spt.shape[2])), int(math.sqrt(spt.shape[2])))
+        qry = qry.reshape(qry.shape[0], self.encoder_dim, int(math.sqrt(qry.shape[2])), int(math.sqrt(qry.shape[2])))
         # shifting channel activations by the channel mean
         spt = self.normalize_feature(spt)
         qry = self.normalize_feature(qry)
@@ -486,19 +486,17 @@ class NewPatchFSL(nn.Module):
         spt_attended = (attn_s.unsqueeze(2) * spt.unsqueeze(0)).mean(dim=0)
         qry_attended = (attn_q.unsqueeze(2) * qry.unsqueeze(1)).mean(dim=1)
 
-
-
         # ----------------------------------cat--------------------------------------#
 
         # spt_attended = spt.unsqueeze(0).repeat(num_qry, 1, 1, 1, 1)
         # qry_attended = qry.unsqueeze(1).repeat(1, way, 1, 1, 1)
 
         # ----------------------------------replace--------------------------------------#
-        spt = spt_attended.reshape(spt.shape[0], 196, -1)
-        qry = qry_attended.reshape(qry.shape[0], 196, -1)
+        spt = spt_attended.reshape(spt.shape[0], self.encoder_dim, -1)
+        qry = qry_attended.reshape(qry.shape[0], self.encoder_dim, -1)
 
-        # spt = self.expand_dim(spt)
-        # qry = self.expand_dim(qry)
+        spt = self.expand_dim(spt).transpose(1, 2)
+        qry = self.expand_dim(qry).transpose(1, 2)
 
         return spt, qry
 
