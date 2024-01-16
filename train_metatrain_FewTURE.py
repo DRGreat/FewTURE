@@ -432,10 +432,14 @@ class NewPatchFSL(nn.Module):
         return x - x.mean(1).unsqueeze(1)
 
     def _cca(self, spt, qry):
-        spt = self.reduce_dim(spt.transpose(1, 2))
-        qry = self.reduce_dim(qry.transpose(1, 2))
-        spt = spt.reshape(spt.shape[0], self.encoder_dim, int(math.sqrt(spt.shape[2])), int(math.sqrt(spt.shape[2])))
-        qry = qry.reshape(qry.shape[0], self.encoder_dim, int(math.sqrt(qry.shape[2])), int(math.sqrt(qry.shape[2])))
+
+        spt = spt.transpose(1, 2).reshape(spt.shape[0], self.encoder_dim, int(math.sqrt(spt.shape[2])),
+                                          int(math.sqrt(spt.shape[2])))
+        qry = qry.transpose(1, 2).reshape(qry.shape[0], self.encoder_dim, int(math.sqrt(qry.shape[2])),
+                                          int(math.sqrt(qry.shape[2])))
+        spt = F.interpolate(spt.transpose(1, 2), self.feature_size, None, 'bilinear', True)
+        qry = F.interpolate(qry.transpose(1, 2), self.feature_size, None, 'bilinear', True)
+
         # shifting channel activations by the channel mean
         spt = self.normalize_feature(spt)
         qry = self.normalize_feature(qry)
@@ -484,7 +488,7 @@ class NewPatchFSL(nn.Module):
 
         # applying attention
         spt_attended = (attn_s.unsqueeze(2) * spt.unsqueeze(0)).mean(dim=0)
-        qry_attended = (attn_q.unsqueeze(2) * qry.unsqueeze(1)).mean(dim=1)
+        spt_attended = (attn_q.unsqueeze(2) * qry.unsqueeze(1)).mean(dim=1)
 
         # ----------------------------------cat--------------------------------------#
 
@@ -492,11 +496,11 @@ class NewPatchFSL(nn.Module):
         # qry_attended = qry.unsqueeze(1).repeat(1, way, 1, 1, 1)
 
         # ----------------------------------replace--------------------------------------#
-        spt = spt_attended.reshape(spt.shape[0], self.encoder_dim, -1)
-        qry = qry_attended.reshape(qry.shape[0], self.encoder_dim, -1)
 
-        spt = self.expand_dim(spt).transpose(1, 2)
-        qry = self.expand_dim(qry).transpose(1, 2)
+        spt = F.interpolate(spt_attended, 14, None, 'bilinear', True)
+        qry = F.interpolate(spt_attended, 14, None, 'bilinear', True)
+        spt = spt.reshape(spt.shape[0], self.encoder_dim, -1).transpose(1, 2)
+        qry = qry.reshape(qry.shape[0], self.encoder_dim, -1).transpose(1, 2)
 
         return spt, qry
 
